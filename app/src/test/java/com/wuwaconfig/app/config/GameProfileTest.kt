@@ -287,6 +287,16 @@ class GameProfileTest {
     }
 
     @Test
+    fun globalProfilePreferenceIsUsedWhenBothVariantsAreInstalled() {
+        assertEquals(
+            GameProfile.DEFAULT_PACKAGE,
+            GameProfile.resolveTargetPackage(
+                setOf(GameProfile.DEFAULT_PACKAGE, GameProfile.SAMSUNG_PACKAGE),
+            ),
+        )
+    }
+
+    @Test
     fun historicalGlobalDefaultUsedWhenNeitherVariantIsVisible() {
         assertEquals(GameProfile.DEFAULT_PACKAGE, GameProfile.resolveTargetPackage(emptySet()))
     }
@@ -319,6 +329,4 @@ internal fun realProfileFile(): File {
         dir = dir.parentFile
     }
     throw AssertionError("game_profile.properties not found; tried:\n  " + tried.joinToString("\n  "))
-
-
 }
