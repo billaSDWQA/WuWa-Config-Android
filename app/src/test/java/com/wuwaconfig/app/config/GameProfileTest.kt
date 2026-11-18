@@ -258,6 +258,45 @@ class GameProfileTest {
         assertTrue(GamePaths.MONITORED_FILES.containsAll(listOf("Engine.ini", "DeviceProfiles.ini", "GameUserSettings.ini", "Scalability.ini", "Hardware.ini")))
         assertEquals(GamePaths.MONITORED_FILES.toSet(), GamePaths.MONITORED_FILE_SET)
     }
+    @Test
+    fun samsungPackageSelectedWhenOnlyVariantInstalled() {
+        assertEquals(
+            GameProfile.SAMSUNG_PACKAGE,
+            GameProfile.resolveTargetPackage(setOf(GameProfile.SAMSUNG_PACKAGE)),
+        )
+    }
+
+    @Test
+    fun googlePlayPackageRemainsSelectedWhenOnlyVariantInstalled() {
+        assertEquals(
+            GameProfile.DEFAULT_PACKAGE,
+            GameProfile.resolveTargetPackage(setOf(GameProfile.DEFAULT_PACKAGE)),
+        )
+    }
+
+    @Test
+    fun configuredPreferencePreservedWhenBothVariantsInstalled() {
+        assertEquals(
+            GameProfile.SAMSUNG_PACKAGE,
+            GameProfile.resolveTargetPackage(
+                setOf(GameProfile.DEFAULT_PACKAGE, GameProfile.SAMSUNG_PACKAGE),
+                GameProfile.SAMSUNG_PACKAGE,
+            ),
+        )
+    }
+
+    @Test
+    fun historicalGlobalDefaultUsedWhenNeitherVariantIsVisible() {
+        assertEquals(GameProfile.DEFAULT_PACKAGE, GameProfile.resolveTargetPackage(emptySet()))
+    }
+
+    @Test
+    fun unsupportedConfiguredPackageCannotBecomeTarget() {
+        assertEquals(
+            GameProfile.DEFAULT_PACKAGE,
+            GameProfile.resolveTargetPackage(emptySet(), "com.example.unrelated"),
+        )
+    }
 }
 
 /**
@@ -280,43 +319,5 @@ internal fun realProfileFile(): File {
     }
     throw AssertionError("game_profile.properties not found; tried:\n  " + tried.joinToString("\n  "))
 
-    @Test
-    fun \`Samsung Galaxy Store package is selected when it is the only supported variant installed\`() {
-        assertEquals(
-            GameProfile.SAMSUNG_PACKAGE,
-            GameProfile.resolveTargetPackage(setOf(GameProfile.SAMSUNG_PACKAGE)),
-        )
-    }
 
-    @Test
-    fun \`Google Play package remains selected when it is the only supported variant installed\`() {
-        assertEquals(
-            GameProfile.DEFAULT_PACKAGE,
-            GameProfile.resolveTargetPackage(setOf(GameProfile.DEFAULT_PACKAGE)),
-        )
-    }
-
-    @Test
-    fun \`configured package preference is preserved when both variants are installed\`() {
-        assertEquals(
-            GameProfile.SAMSUNG_PACKAGE,
-            GameProfile.resolveTargetPackage(
-                setOf(GameProfile.DEFAULT_PACKAGE, GameProfile.SAMSUNG_PACKAGE),
-                GameProfile.SAMSUNG_PACKAGE,
-            ),
-        )
-    }
-
-    @Test
-    fun \`historical global default is retained when neither supported variant is visible\`() {
-        assertEquals(GameProfile.DEFAULT_PACKAGE, GameProfile.resolveTargetPackage(emptySet()))
-    }
-
-    @Test
-    fun \`unsupported configured package cannot become a target\`() {
-        assertEquals(
-            GameProfile.DEFAULT_PACKAGE,
-            GameProfile.resolveTargetPackage(emptySet(), "com.example.unrelated"),
-        )
-    }
 }
