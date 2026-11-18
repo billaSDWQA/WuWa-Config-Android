@@ -542,7 +542,7 @@ class ShizukuBackend(private val context: android.content.Context) : AccessBacke
             try {
                 val inner =
                     if (runAsTried) {
-                        "${runAsCommand(GamePaths.TARGET_PACKAGE, "$shellCmd ${shQuote(path)}")} > $tmpQuote 2>$errQuote"
+                        "${runAsCommand(GamePaths.packageName, "$shellCmd ${shQuote(path)}")} > $tmpQuote 2>$errQuote"
                     } else {
                         "$shellCmd ${shQuote(path)} > $tmpQuote 2>$errQuote"
                     }
@@ -665,7 +665,7 @@ class ShizukuBackend(private val context: android.content.Context) : AccessBacke
     private suspend fun execOrThrowWithRunAs(command: String): String {
         var usedRunAs = false
         val result =
-            withRunAsFallback(command, GamePaths.TARGET_PACKAGE) { cmd ->
+            withRunAsFallback(command, GamePaths.packageName) { cmd ->
                 usedRunAs = cmd != command
                 try {
                     Result.success(execOrThrow(cmd))
@@ -684,12 +684,12 @@ class ShizukuBackend(private val context: android.content.Context) : AccessBacke
         val err = result.exceptionOrNull() ?: Exception("Shizuku command failed")
         if (isNotDebuggable(err.message)) {
             LogRepository.add(
-                "Shizuku: run-as unavailable — ${GamePaths.TARGET_PACKAGE} is not debuggable. " +
+                "Shizuku: run-as unavailable — ${GamePaths.packageName} is not debuggable. " +
                     "Use the SAF or Root access method for this ROM.",
                 LogLevel.ERROR,
             )
         } else if (isPermissionDenied(err.message)) {
-            LogRepository.add("Shizuku: Permission denied, retrying via run-as ${GamePaths.TARGET_PACKAGE}", LogLevel.WARNING)
+            LogRepository.add("Shizuku: Permission denied, retrying via run-as ${GamePaths.packageName}", LogLevel.WARNING)
         }
         throw err
     }
