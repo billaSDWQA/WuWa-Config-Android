@@ -258,6 +258,7 @@ class GameProfileTest {
         assertTrue(GamePaths.MONITORED_FILES.containsAll(listOf("Engine.ini", "DeviceProfiles.ini", "GameUserSettings.ini", "Scalability.ini", "Hardware.ini")))
         assertEquals(GamePaths.MONITORED_FILES.toSet(), GamePaths.MONITORED_FILE_SET)
     }
+
     @Test
     fun samsungPackageSelectedWhenOnlyVariantInstalled() {
         assertEquals(
