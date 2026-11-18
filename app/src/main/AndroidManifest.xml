@@ -5,7 +5,7 @@
     <!-- Package visibility is limited to the two supported Wuthering Waves variants. -->
     <queries>
         <package android:name="com.kurogame.wutheringwaves.global" />
-        <package android:name="com.kurogame.wutherwaves.samsung" />
+        <package android:name="com.kurogame.wutheringwaves.samsung" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.android.package-archive" />
