@@ -14,7 +14,7 @@ class SafBackendPathTest {
 
     @Test
     fun `rejects a saved tree from the Google Play package`() {
-        val googlePlayRoot = "/storage/emulated/0/Android/data/com.kurogame.wutherwaves.global"
+        val googlePlayRoot = "/storage/emulated/0/Android/data/com.kurogame.wutheringwaves.global"
         assertFalse(isMatchingGameTreeRoot(googlePlayRoot, samsungGameRoot))
     }
 
