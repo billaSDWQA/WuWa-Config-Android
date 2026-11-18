@@ -5,7 +5,11 @@
     <!-- Package visibility is limited to the two supported Wuthering Waves variants. -->
     <queries>
         <package android:name="com.kurogame.wutheringwaves.global" />
-        <package android:name="com.kurogame.wutheringwaves.samsung" />
+        <package android:name="com.kurogame.wutherwaves.samsung" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.android.package-archive" />
+        </intent>
     </queries>
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -37,12 +41,7 @@
          this element the system installer is invisible and the self-update flow
          reports the misleading "No package installer found on device" on a
          device that installs APKs perfectly well. -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:mimeType="application/vnd.android.package-archive" />
-        </intent>
-    </queries>
+
 
     <application
         android:name=".WuWaConfigApp"
