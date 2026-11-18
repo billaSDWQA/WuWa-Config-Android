@@ -21,7 +21,7 @@ import com.wuwaconfig.app.config.GameProfile
 object GamePaths {
     private val profile: GameProfile get() = GameProfile.get()
 
-    const val TARGET_PACKAGE = GameProfile.DEFAULT_PACKAGE
+    val TARGET_PACKAGE: String get() = packageName
     const val CONFIG_PATH = GameProfile.DEFAULT_CONFIG_PATH
     const val LOG_PATH = GameProfile.DEFAULT_LOG_PATH
     const val LOG_FILE_NAME = GameProfile.DEFAULT_LOG_FILE_NAME
