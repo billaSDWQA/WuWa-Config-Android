@@ -99,9 +99,11 @@ Unreal Engine INI configs for Wuthering Waves — no root, no PC, no telemetry.
 
 ## Backends
 
-The app reads and writes
-`Android/data/com.kurogame.wutheringwaves.global/files/UE4Game/Client/Client/Saved/Config/Android`.
-Pick the backend that fits your device:
+The app detects the installed Wuthering Waves package and reads/writes that variant's
+`Android/data/<detected-package>/files/UE4Game/Client/Client/Saved/Config/Android`
+directory. Both Google Play (`com.kurogame.wutheringwaves.global`) and Samsung Galaxy
+Store (`com.kurogame.wutheringwaves.samsung`) packages are supported. If both are installed,
+the profile's configured package preference is retained.
 
 | Backend | Shell | File push | Log reading | Config gen | Needs | Best for |
 |:--|:--:|:--:|:--:|:--:|:--|--|
@@ -152,8 +154,8 @@ that is fully reliable inside `Android/data/` on Android 11+.
 
 ### SAF — Storage Access Framework
 
-Select **SAF → Pick Dir** and grant the game's tree. The picker opens pre-targeted at
-`Android/data/com.kurogame.wutheringwaves.global`, which Android 11+ otherwise hides.
+Select **SAF → Pick Dir** and grant the detected game's tree. The picker targets
+`Android/data/<detected-package>`, which Android 11+ otherwise hides.
 
 > [!NOTE]
 > SAF is file-level only — there is no shell. Log reading and the config generator are
