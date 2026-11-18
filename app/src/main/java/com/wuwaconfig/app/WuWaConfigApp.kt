@@ -141,7 +141,7 @@ class WuWaConfigApp : Application() {
                     false
                 }
             }
-        GameProfile.load(assets, installedPackages = installedGamePackages)
+        GameProfile.load(assets, force = true, installedPackages = installedGamePackages)
         // Nested tuning data (presets, classifiers, plugin paths). Separate asset
         // from game_profile.properties because it is not flat.
         TuningProfile.load(assets)
