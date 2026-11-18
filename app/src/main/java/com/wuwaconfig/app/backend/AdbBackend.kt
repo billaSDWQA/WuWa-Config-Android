@@ -24,9 +24,11 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
     override val isConnected: Boolean get() = client.isConnected
 
     companion object {
-        private const val GAME_PKG = GamePaths.TARGET_PACKAGE
         private const val STAGING_SUFFIX = ".wuwa_new"
     }
+
+    /** Resolve at call time so every run-as retry follows the detected game variant. */
+    private val gamePackage: String get() = GamePaths.packageName
 
     override suspend fun connect(): Result<Unit> {
         LogRepository.add("ADB connect: scanning for ADB port...")
@@ -137,7 +139,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
         // `run-as ... sh -c`) when the shell reports a permission failure, which is what
         // scoped storage produces on the ROMs this fallback exists for.
         val result =
-            withRunAsFallback(command, GAME_PKG) { cmd ->
+            withRunAsFallback(command, gamePackage) { cmd ->
                 client.executeShellCommand(cmd)
             }
         if (result.isSuccess) {
@@ -180,7 +182,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
             val attemptPath = "$encodedPath.$attempt"
             val mkdirCmd = "mkdir -p ${shQuote(parent)}"
             val mkdirResult =
-                withRunAsFallback(mkdirCmd, GAME_PKG) { cmd ->
+                withRunAsFallback(mkdirCmd, gamePackage) { cmd ->
                     client.executeShellCommand(cmd)
                 }
             if (mkdirResult.isFailure) {
@@ -210,7 +212,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
             val decodeCmd = plan.decode
             var decodeResult = client.executeShellCommand(decodeCmd)
             if (decodeResult.isFailure) {
-                val altDecode = client.executeShellCommandWithRunAs(GAME_PKG, decodeCmd)
+                val altDecode = client.executeShellCommandWithRunAs(gamePackage, decodeCmd)
                 if (altDecode.isSuccess) decodeResult = altDecode
             }
             if (decodeResult.isFailure) {
@@ -221,7 +223,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
             val verifyCmd = plan.verify
             var remoteMd5 = client.executeShellCommand(verifyCmd).getOrNull()?.trim()
             if (remoteMd5 == null || remoteMd5.length != 32) {
-                val altMd5 = client.executeShellCommandWithRunAs(GAME_PKG, verifyCmd).getOrNull()?.trim()
+                val altMd5 = client.executeShellCommandWithRunAs(gamePackage, verifyCmd).getOrNull()?.trim()
                 if (altMd5 != null && altMd5.length == 32) remoteMd5 = altMd5
             }
             if (remoteMd5 != null && remoteMd5.length == 32) {
@@ -235,7 +237,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
                 val sizeCmd = "wc -c < ${shQuote(stagingTarget)} 2>/dev/null"
                 var remoteSize = client.executeShellCommand(sizeCmd).getOrNull()?.trim()?.toLongOrNull()
                 if (remoteSize == null) {
-                    val altSize = client.executeShellCommandWithRunAs(GAME_PKG, sizeCmd).getOrNull()?.trim()?.toLongOrNull()
+                    val altSize = client.executeShellCommandWithRunAs(gamePackage, sizeCmd).getOrNull()?.trim()?.toLongOrNull()
                     if (altSize != null) remoteSize = altSize
                 }
                 if (remoteSize == null) {
@@ -250,7 +252,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
             val moveCmd =
                 "mv ${shQuote(stagingTarget)} ${shQuote(targetPath)}"
             val moveResult =
-                withRunAsFallback(moveCmd, GAME_PKG) { cmd ->
+                withRunAsFallback(moveCmd, gamePackage) { cmd ->
                     client.executeShellCommand(cmd)
                 }
             if (moveResult.isFailure) {
@@ -283,7 +285,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
 
     override suspend fun ensureDirectoryExists(dirPath: String): Result<String> {
         val cmd = "mkdir -p ${shQuote(dirPath)}"
-        return withRunAsFallback(cmd, GAME_PKG) { client.executeShellCommand(it) }
+        return withRunAsFallback(cmd, gamePackage) { client.executeShellCommand(it) }
     }
 
     override suspend fun fileExists(path: String): Result<Boolean> {
@@ -291,7 +293,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
         // transport-level, not a permission verdict.
         val result = client.fileExists(path)
         if (result.isFailure) {
-            val alt = client.executeShellCommandWithRunAs(GAME_PKG, "test -f ${shQuote(path)} && echo 1 || echo 0")
+            val alt = client.executeShellCommandWithRunAs(gamePackage, "test -f ${shQuote(path)} && echo 1 || echo 0")
             return alt.map { it.trim() == "1" }
         }
         return result
@@ -302,7 +304,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
         // empty list, so a denied listing can no longer be reported as "0 files".
         val result = client.listDirectory(path)
         if (result.isFailure) {
-            val alt = client.executeShellCommandWithRunAs(GAME_PKG, "ls -1 ${shQuote(path)} 2>/dev/null")
+            val alt = client.executeShellCommandWithRunAs(gamePackage, "ls -1 ${shQuote(path)} 2>/dev/null")
             return alt.map { output -> output.trim().lines().filter { it.isNotBlank() } }
         }
         return result
@@ -313,18 +315,18 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
         if (result.isSuccess) return result
         val backupPath = "$path.backup_${System.currentTimeMillis()}"
         // Report where the backup went; the run-as `cp` prints nothing on success.
-        return client.executeShellCommandWithRunAs(GAME_PKG, "cp ${shQuote(path)} ${shQuote(backupPath)}")
+        return client.executeShellCommandWithRunAs(gamePackage, "cp ${shQuote(path)} ${shQuote(backupPath)}")
             .map { backupPath }
     }
 
     override suspend fun readFile(path: String): Result<String> {
         val cmd = "cat ${shQuote(path)}"
-        return withRunAsFallback(cmd, GAME_PKG) { client.executeShellCommand(it) }
+        return withRunAsFallback(cmd, gamePackage) { client.executeShellCommand(it) }
     }
 
     override suspend fun readFileBytes(path: String): Result<ByteArray> {
         val b64Cmd = "base64 -w0 ${shQuote(path)}"
-        val b64 = withRunAsFallback(b64Cmd, GAME_PKG) { client.executeShellCommand(it) }
+        val b64 = withRunAsFallback(b64Cmd, gamePackage) { client.executeShellCommand(it) }
         return b64.mapCatching { Base64.decode(it.trim(), Base64.DEFAULT) }
     }
 
@@ -336,10 +338,10 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
             File(targetPath).parent
                 ?: return Result.failure(Exception("Invalid target path: $targetPath"))
         val mkdirCmd = "mkdir -p ${shQuote(parent)}"
-        val mkdirResult = withRunAsFallback(mkdirCmd, GAME_PKG) { client.executeShellCommand(it) }
+        val mkdirResult = withRunAsFallback(mkdirCmd, gamePackage) { client.executeShellCommand(it) }
         if (mkdirResult.isFailure) return mkdirResult
         val cpCmd = "cp ${shQuote(sourcePath)} ${shQuote(targetPath)}"
-        val result = withRunAsFallback(cpCmd, GAME_PKG) { client.executeShellCommand(it) }
+        val result = withRunAsFallback(cpCmd, gamePackage) { client.executeShellCommand(it) }
         // A failed cp (e.g. the shell cannot write into the app's private data dir) now
         // surfaces as Result.failure, but the deployment may still be recoverable: stage
         // it through world-writable /data/local/tmp (which shell can write and the app
@@ -394,7 +396,7 @@ open class AdbBackend(crypto: CryptoAdapter) : AccessBackend {
         return if (result.isSuccess) {
             Result.success(Unit)
         } else {
-            client.executeShellCommandWithRunAs(GAME_PKG, cmd).map { Unit }
+            client.executeShellCommandWithRunAs(gamePackage, cmd).map { Unit }
         }
     }
 }

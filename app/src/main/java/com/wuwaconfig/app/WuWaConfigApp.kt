@@ -132,7 +132,16 @@ class WuWaConfigApp : Application() {
         // assets/config/game_profile.properties so a game update can be tracked by
         // editing a file rather than recompiling. Must run before anything reads
         // GamePaths, and before CvarDatabase so the two can be cross-checked.
-        GameProfile.load(assets)
+        val installedGamePackages =
+            GameProfile.SUPPORTED_PACKAGES.filterTo(mutableSetOf()) { packageName ->
+                try {
+                    packageManager.getApplicationInfo(packageName, 0)
+                    true
+                } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
+                }
+            }
+        GameProfile.load(assets, force = true, installedPackages = installedGamePackages)
         // Nested tuning data (presets, classifiers, plugin paths). Separate asset
         // from game_profile.properties because it is not flat.
         TuningProfile.load(assets)

@@ -258,6 +258,56 @@ class GameProfileTest {
         assertTrue(GamePaths.MONITORED_FILES.containsAll(listOf("Engine.ini", "DeviceProfiles.ini", "GameUserSettings.ini", "Scalability.ini", "Hardware.ini")))
         assertEquals(GamePaths.MONITORED_FILES.toSet(), GamePaths.MONITORED_FILE_SET)
     }
+
+    @Test
+    fun samsungPackageSelectedWhenOnlyVariantInstalled() {
+        assertEquals(
+            GameProfile.SAMSUNG_PACKAGE,
+            GameProfile.resolveTargetPackage(setOf(GameProfile.SAMSUNG_PACKAGE)),
+        )
+    }
+
+    @Test
+    fun googlePlayPackageRemainsSelectedWhenOnlyVariantInstalled() {
+        assertEquals(
+            GameProfile.DEFAULT_PACKAGE,
+            GameProfile.resolveTargetPackage(setOf(GameProfile.DEFAULT_PACKAGE)),
+        )
+    }
+
+    @Test
+    fun configuredPreferencePreservedWhenBothVariantsInstalled() {
+        assertEquals(
+            GameProfile.SAMSUNG_PACKAGE,
+            GameProfile.resolveTargetPackage(
+                setOf(GameProfile.DEFAULT_PACKAGE, GameProfile.SAMSUNG_PACKAGE),
+                GameProfile.SAMSUNG_PACKAGE,
+            ),
+        )
+    }
+
+    @Test
+    fun globalProfilePreferenceIsUsedWhenBothVariantsAreInstalled() {
+        assertEquals(
+            GameProfile.DEFAULT_PACKAGE,
+            GameProfile.resolveTargetPackage(
+                setOf(GameProfile.DEFAULT_PACKAGE, GameProfile.SAMSUNG_PACKAGE),
+            ),
+        )
+    }
+
+    @Test
+    fun historicalGlobalDefaultUsedWhenNeitherVariantIsVisible() {
+        assertEquals(GameProfile.DEFAULT_PACKAGE, GameProfile.resolveTargetPackage(emptySet()))
+    }
+
+    @Test
+    fun unsupportedConfiguredPackageCannotBecomeTarget() {
+        assertEquals(
+            GameProfile.DEFAULT_PACKAGE,
+            GameProfile.resolveTargetPackage(emptySet(), "com.example.unrelated"),
+        )
+    }
 }
 
 /**

@@ -43,6 +43,8 @@ class GameProfile internal constructor(
     private val props: Properties,
     /** Non-fatal problems found while loading, surfaced in the app log. */
     val loadWarnings: List<String> = emptyList(),
+    /** Runtime-selected installed package; null preserves the profile asset default. */
+    private val targetPackageOverride: String? = null,
 ) {
     private fun raw(key: String): String? = props.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
 
@@ -88,7 +90,7 @@ class GameProfile internal constructor(
 
     // ── paths ──
 
-    val targetPackage: String get() = str(KEY_PACKAGE, DEFAULT_PACKAGE)
+    val targetPackage: String get() = targetPackageOverride ?: str(KEY_PACKAGE, DEFAULT_PACKAGE)
 
     val configPath: String get() = str(KEY_CONFIG_PATH, DEFAULT_CONFIG_PATH)
 
@@ -241,6 +243,25 @@ class GameProfile internal constructor(
         const val DEFAULT_VERSION_CODE = 180055720
         const val DEFAULT_ENGINE_GENERATION = "UE4"
         const val DEFAULT_PACKAGE = "com.kurogame.wutheringwaves.global"
+        const val SAMSUNG_PACKAGE = "com.kurogame.wutheringwaves.samsung"
+        val SUPPORTED_PACKAGES = setOf(DEFAULT_PACKAGE, SAMSUNG_PACKAGE)
+
+        /**
+         * Select the installed game package without changing the profile's other
+         * build-specific data. If exactly one supported variant is installed it
+         * wins. If both are installed, preserve the configured preference; if
+         * neither is visible, preserve the historical global default.
+         */
+        fun resolveTargetPackage(
+            installedPackages: Set<String>,
+            configuredPackage: String = DEFAULT_PACKAGE,
+        ): String {
+            val installed = SUPPORTED_PACKAGES.filter { it in installedPackages }
+            return when (installed.size) {
+                1 -> installed.single()
+                else -> configuredPackage.takeIf { it in SUPPORTED_PACKAGES } ?: DEFAULT_PACKAGE
+            }
+        }
         const val DEFAULT_CONFIG_PATH = "files/UE4Game/Client/Client/Saved/Config/Android"
         const val DEFAULT_LOG_PATH = "files/UE4Game/Client/Client/Saved/Logs"
         const val DEFAULT_LOG_FILE_NAME = "Client.log"
@@ -380,13 +401,14 @@ class GameProfile internal constructor(
         fun load(
             assets: AssetManager,
             force: Boolean = false,
+            installedPackages: Set<String> = emptySet(),
         ): GameProfile {
             instance?.let { if (!force) return it }
-            val loaded = read(assets)
+            val loaded = read(assets, installedPackages)
             instance = loaded
             if (loaded.loadWarnings.isEmpty()) {
                 LogRepository.add(
-                    "GameProfile: loaded $ASSET_PATH (game ${loaded.gameVersion}, v${loaded.versionCode})",
+                    "GameProfile: loaded $ASSET_PATH (game ${loaded.gameVersion}, v${loaded.versionCode}, package ${loaded.targetPackage})",
                     LogLevel.SUCCESS,
                 )
             } else {
@@ -402,7 +424,7 @@ class GameProfile internal constructor(
         /** The loaded profile, or the all-defaults profile if [load] never ran. */
         fun get(): GameProfile = instance ?: GameProfile(Properties()).also { instance = it }
 
-        private fun read(assets: AssetManager): GameProfile {
+        private fun read(assets: AssetManager, installedPackages: Set<String>): GameProfile {
             val warnings = mutableListOf<String>()
             val props = Properties()
             return try {
@@ -424,11 +446,19 @@ class GameProfile internal constructor(
                     if (value.isEmpty()) warnings += "$key (empty)"
                 }
                 if (props.isEmpty) warnings += "asset parsed to zero keys"
-                GameProfile(props, warnings)
+                GameProfile(
+                    props,
+                    warnings,
+                    resolveTargetPackage(installedPackages, profile.targetPackage),
+                )
             } catch (e: Exception) {
                 // Built-in defaults: the app must keep working when the asset is
                 // missing from a split APK, unreadable, or malformed.
-                GameProfile(Properties(), listOf("load failed (${e.javaClass.simpleName}: ${e.message})"))
+                GameProfile(
+                    Properties(),
+                    listOf("load failed (${e.javaClass.simpleName}: ${e.message})"),
+                    resolveTargetPackage(installedPackages),
+                )
             }
         }
     }

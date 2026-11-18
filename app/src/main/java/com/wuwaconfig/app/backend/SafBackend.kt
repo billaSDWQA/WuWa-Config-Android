@@ -18,6 +18,9 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStreamReader
 
+internal fun isMatchingGameTreeRoot(treeRoot: String?, expectedGameRoot: String): Boolean =
+    treeRoot?.trimEnd('/') == expectedGameRoot.trimEnd('/')
+
 class SafBackend(private val context: Context) : AccessBackend {
     @Volatile
     private var _treeUri: Uri? = null
@@ -92,8 +95,9 @@ class SafBackend(private val context: Context) : AccessBackend {
                     LogRepository.add("SAF connect: no directory selected", LogLevel.ERROR)
                     return@withContext Result.failure(Exception("No SAF directory selected. Tap Pick Directory to choose the game config folder."))
                 }
-            LogRepository.add("SAF connect: verifying $uri")
             try {
+                val actualRoot = requireCurrentGameTreeRoot()
+                LogRepository.add("SAF connect: verifying $uri ($actualRoot)")
                 val doc = DocumentFile.fromTreeUri(context, uri)
                 if (doc == null || !doc.exists() || !doc.isDirectory) {
                     clearTreeUri()
@@ -353,7 +357,7 @@ class SafBackend(private val context: Context) : AccessBackend {
         val tree = _treeUri ?: return null
         val root = DocumentFile.fromTreeUri(context, tree) ?: return null
         val nameOnly = path.substringAfterLast('/')
-        val treeRoot = treeDeviceRoot() ?: knownRoot
+        val treeRoot = requireCurrentGameTreeRoot()
 
         val strategies =
             listOf(
@@ -375,6 +379,24 @@ class SafBackend(private val context: Context) : AccessBackend {
      * whose document id is `primary:Android/data/<pkg>`. Deriving the real root from that id lets
      * us write into `.../<pkg>/files/UE4Game/...` even though the tree isn't rooted at the config dir.
      */
+    /**
+     * Reject stale SAF grants that still point at the other store variant.
+     * A saved URI is scoped to the selected package directory, not to the
+     * currently detected package; silently reusing it could deploy INIs to
+     * the wrong installation.
+     */
+    private fun requireCurrentGameTreeRoot(): String {
+        val actualRoot = treeDeviceRoot()
+        val expectedRoot = GamePaths.GAME_ROOT
+        if (!isMatchingGameTreeRoot(actualRoot, expectedRoot)) {
+            throw IllegalStateException(
+                "Selected SAF folder does not match the detected game package " +
+                    "(${GamePaths.packageName}). Re-select Android/data/${GamePaths.packageName}.",
+            )
+        }
+        return actualRoot!!
+    }
+
     private fun treeDeviceRoot(): String? {
         val uri = _treeUri ?: return null
         val docId =
@@ -416,7 +438,7 @@ class SafBackend(private val context: Context) : AccessBackend {
             val tree = _treeUri ?: throw Exception("No SAF directory selected")
             val root = DocumentFile.fromTreeUri(context, tree) ?: throw Exception("Cannot access tree")
             val nameOnly = path.substringAfterLast('/')
-            val treeRoot = treeDeviceRoot() ?: knownRoot
+            val treeRoot = requireCurrentGameTreeRoot()
 
             val strategies =
                 listOf(
